@@ -20,38 +20,12 @@ CANVAS_HEIGHT = 720
 
 
 def main():
-    # telemetry_data = read_csv()
-    
     input_path = Path("./sample/")
     
     if not input_path.is_dir():
         sys.exit(f"Input path '{input_path}' is not a directory.")
         
-    pattern = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-([a-z_]+)\.(mp4|csv)")
-    
-    ## Create Dict for files -> Move to function
-    tesla_cam = {}
-    
-    for item in input_path.iterdir():
-        if not item.is_file():
-            continue
-        
-        match = pattern.search(item.name)
-        
-        if match:
-            timestamp = match.group(1)
-            file_id = match.group(2)
-            extension = match.group(3)
-            
-            tesla_cam.setdefault(timestamp, {})
-            tesla_cam[timestamp].setdefault("data", None)
-            
-            if extension == "csv":
-                tesla_cam[timestamp]["data"] = item.name
-            else:
-                tesla_cam[timestamp][file_id] = item.name
-                
-    # print(tesla_cam)
+    tesla_cam = compile_tesla_cam(input_path)
     
     missing_data_timestamps = []
     for timestamp, files_info in tesla_cam.items():
@@ -63,21 +37,40 @@ def main():
             print(f"- {ts}")
         sys.exit("Processing aborted due to missing data files.")
         
+    # --- Initialize the VideoWriter ---
+    # Get video properties
+    first_timestamp = sorted(tesla_cam.keys())[0]
+    temp_video_path = f"{input_path}/{tesla_cam[first_timestamp]['front']}"
+    
+    cap_temp = cv.VideoCapture(temp_video_path)
+    if not cap_temp.isOpened():
+        sys.exit(f"FATAL: Could not open {temp_video_path} to get video properties.")
+        
+    canvas_width = CANVAS_WIDTH
+    canvas_height = CANVAS_HEIGHT
+    fps = cap_temp.get(cv.CAP_PROP_FPS)
+    cap_temp.release()
+    
+    # Define output file codec and create the VideoWriter object
+    output_filepath = "./output/output.mp4"
+    fourcc = cv.VideoWriter_fourcc(*'mp4v')
+    out = cv.VideoWriter(output_filepath, fourcc, fps, (canvas_width, canvas_height), isColor=True)
+        
     for timestamp in sorted(tesla_cam.keys()):
         cap_front = None
         cap_back = None
-        # cap_left_repeater = None
-        # cap_right_repeater = None
-        # telemetry_df = None
+        cap_left_repeater = None
+        cap_right_repeater = None
+        telemetry_df = None
         
         if tesla_cam[timestamp]["front"]:
             cap_front = cv.VideoCapture(f"{input_path}/{tesla_cam[timestamp]['front']}")
         if tesla_cam[timestamp]["back"]:
             cap_back = cv.VideoCapture(f"{input_path}/{tesla_cam[timestamp]['back']}")
-        # if tesla_cam[timestamp]["left_repeater"]:
-        #     cap_left_repeater = cv.VideoCapture(f"{input_path}/{tesla_cam[timestamp]['left_repeater']}")
-        # if tesla_cam[timestamp]["right_repeater"]:
-        #     cap_right_repeater = cv.VideoCapture(f"{input_path}/{tesla_cam[timestamp]['right_repeater']}")
+        if tesla_cam[timestamp]["left_repeater"]:
+            cap_left_repeater = cv.VideoCapture(f"{input_path}/{tesla_cam[timestamp]['left_repeater']}")
+        if tesla_cam[timestamp]["right_repeater"]:
+            cap_right_repeater = cv.VideoCapture(f"{input_path}/{tesla_cam[timestamp]['right_repeater']}")
             
         if tesla_cam[timestamp]["data"]:
             data_filepath = f"{input_path}/{tesla_cam[timestamp]['data']}"
@@ -89,17 +82,31 @@ def main():
                 telemetry_df = None
         else:
             print(f"No telemetry data file found for timestamp: {timestamp}")
-        break
+            
+        process_video(
+        cap_front=cap_front,
+        cap_back=cap_back,
+        cap_left_repeater=cap_left_repeater,
+        cap_right_repeater=cap_right_repeater,
+        telemetry_df=telemetry_df,
+        out=out
+        )
+        
+        # Release the input video captures for this timestamp
+        if cap_front: cap_front.release()
+        if cap_back: cap_back.release()
+    
+    
+    print(f"Finished all clips. Releasing final video file: {output_filepath}")
+    out.release()
+    cv.destroyAllWindows()
     
         ## Release capture of all clips: if cap_front: cap_front.release()
     
+    
+def process_video(cap_front, cap_back, cap_left_repeater, cap_right_repeater, telemetry_df, out):
     canvas_width = CANVAS_WIDTH
     canvas_height = CANVAS_HEIGHT
-    fps = cap_front.get(cv.CAP_PROP_FPS)
-    
-    # Codec and VideoWriter
-    fourcc = cv.VideoWriter_fourcc(*'mp4v')
-    out = cv.VideoWriter('/output/output.mp4', fourcc, fps, (canvas_width, canvas_height), isColor=True)
     
     if not cap_front.isOpened() or not cap_back.isOpened():
         print("Cannot open file")
@@ -134,15 +141,41 @@ def main():
         
         cv.imshow("Rendering Preview", canvas) # Shows the video in a window
         if cv.waitKey(1) & 0xFF == ord('q'):    # Lets you quit by pressing 'q'
-            break
+            cap_front.release()
+            cap_back.release()
+            out.release()
+            cv.destroyAllWindows()
+            sys.exit("User stopped program.")
         
         # write frame
         out.write(canvas)
+    
+    
+def compile_tesla_cam(input_path):
+    pattern = re.compile(r"([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-([a-z_]+)\.(mp4|csv)")
+    
+    ## Create Dict for files -> Move to function
+    tesla_cam = {}
+    
+    for item in input_path.iterdir():
+        if not item.is_file():
+            continue
         
-    cap_front.release()
-    cap_back.release()
-    out.release()
-    cv.destroyAllWindows()
+        match = pattern.search(item.name)
+        
+        if match:
+            timestamp = match.group(1)
+            file_id = match.group(2)
+            extension = match.group(3)
+            
+            tesla_cam.setdefault(timestamp, {})
+            tesla_cam[timestamp].setdefault("data", None)
+            
+            if extension == "csv":
+                tesla_cam[timestamp]["data"] = item.name
+            else:
+                tesla_cam[timestamp][file_id] = item.name
+    return tesla_cam
     
     
 def draw_overlay(canvas, f:int, telemetry_df, frame_index):
