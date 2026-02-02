@@ -15,11 +15,27 @@ FONT_SPEED = ImageFont.truetype("arial.ttf", 30)
 FONT_SPEED_UNIT = ImageFont.truetype("arialbd.ttf", 14)
 FONT_AUTOPILOT = ImageFont.truetype("arialbd.ttf", 14)
 FONT_GEAR = ImageFont.truetype("arialbd.ttf", 16)
+BLINKER_OFF = (0, 102, 41, 220)
+BLINKER_ON = (0, 194, 78, 250)
+BLINKER_INTERVAL = 22
 CANVAS_WIDTH = 1280
 CANVAS_HEIGHT = 720
 
 
+blinker_state = {
+        "left": {
+            "state": False,
+            "frame": None
+        },
+        "right": {
+            "state": False,
+            "frame": None
+        }
+    }
+
+
 def main():
+    
     input_path = Path("./sample/")
     
     if not input_path.is_dir():
@@ -188,7 +204,10 @@ def compile_tesla_cam(input_path):
     return tesla_cam
     
     
-def draw_overlay(canvas, f:int, telemetry_df, frame_index):
+def draw_overlay(canvas, f, telemetry_df, frame_index):
+    # Read current frame data
+    current_frame_data = telemetry_df.iloc[frame_index]
+    
     # 1. Background
     x, y, w, h = 552, 22, 175, 70
     
@@ -236,12 +255,49 @@ def draw_overlay(canvas, f:int, telemetry_df, frame_index):
         fill=CIRCLE_BG_COLOR
     )
     
+    # Draw Blinkers
+    global blinker_state
+    left_blinker = current_frame_data["blinker_on_left"]
+    right_blinker = current_frame_data["blinker_on_right"]
+    
+    left_blinker_fill = BLINKER_OFF
+    right_blinker_fill = BLINKER_OFF
+    
+    # Right Blinker
+    if right_blinker != blinker_state["right"]["state"]:
+        blinker_state["right"]["state"] = right_blinker
+        blinker_state["right"]["frame"] = int(f)
+    
+    if blinker_state["right"]["state"]:
+        if f < blinker_state["right"]["frame"] + BLINKER_INTERVAL:
+            right_blinker_fill = BLINKER_ON
+        if f == blinker_state["right"]["frame"] + BLINKER_INTERVAL:
+            right_blinker_fill = BLINKER_OFF
+        if f == blinker_state["right"]["frame"] + (BLINKER_INTERVAL + 18):
+            right_blinker_fill = BLINKER_ON
+            blinker_state["right"]["frame"] = int(f)
+    
+    # Left Blinker        
+    if left_blinker != blinker_state["left"]["state"]:
+        blinker_state["left"]["state"] = left_blinker
+        blinker_state["left"]["frame"] = int(f)
+    
+    if blinker_state["left"]["state"]:
+        if f < blinker_state["left"]["frame"] + BLINKER_INTERVAL:
+            left_blinker_fill = BLINKER_ON
+        if f == blinker_state["left"]["frame"] + BLINKER_INTERVAL:
+            left_blinker_fill = BLINKER_OFF
+        if f == blinker_state["left"]["frame"] + (BLINKER_INTERVAL + 18):
+            left_blinker_fill = BLINKER_ON
+            blinker_state["left"]["frame"] = int(f)
+    
+    
+    draw_left_blinker(left_blinker_fill, draw)
+    draw_right_blinker(right_blinker_fill, draw)
+    
     # Merge layers
     roi_pil = Image.alpha_composite(roi_pil, overlay).convert("RGB")
     draw = ImageDraw.Draw(roi_pil)
-    
-    # Read current frame data
-    current_frame_data = telemetry_df.iloc[frame_index]
     
     # 2. Speed
     speed, speed_unit = get_speed(f, current_frame_data)
@@ -274,13 +330,32 @@ def draw_overlay(canvas, f:int, telemetry_df, frame_index):
     # Draw Gear State
     draw.text((gear_state_x, gear_state_y), gear_state, font=FONT_GEAR, fill=FONT_WHITE)
     
-    
     # CONVERT BACK
     final_roi = cv.cvtColor(np.array(roi_pil.convert("RGB")), cv.COLOR_RGB2BGR)
     
     canvas[y:y+h, x:x+w] = final_roi
     
     return canvas
+
+
+def draw_left_blinker(blinker_fill, draw):
+    shape = [
+        (40, 35),                       # Tip
+        (50, 25), (50, 30), (60, 30),   # Top half
+        (60, 40), (50, 40), (50, 45)    # Bottom half
+    ]
+    
+    draw.polygon(shape, fill=blinker_fill)
+    
+
+def draw_right_blinker(blinker_fill, draw):
+    shape = [
+        (115, 30), (125, 30), (125, 25),   # Top half
+        (135, 35),                         # Tip
+        (125, 45), (125, 40), (115, 40)    # Bottom half
+    ]
+    
+    draw.polygon(shape, fill=blinker_fill)
 
 
 def get_text_x(text, font, draw, shape_center):
@@ -328,7 +403,12 @@ def get_speed(f, current_frame_data) -> int:
     speed_kph = speed_mps * 3.6
     speed_unit = "km/h"
     
-    return f"{speed_kph:.0f}", speed_unit
+    if speed_kph < 0:
+        speed = f"{speed_kph*speed_kph:.0f}"
+    else:
+        speed = f"{speed_kph:.0f}"
+    
+    return speed, speed_unit
     
     
 if __name__ == "__main__":
