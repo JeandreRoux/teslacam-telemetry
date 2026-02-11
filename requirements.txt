@@ -2,5 +2,5 @@ opencv-python
 pillow
 numpy
 protobuf
-python-ffmpeg
 pandas
+argparse

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 import math
+import argparse
 
 OVERLAY_BG_COLOR = (0, 0, 0, 220)
 CIRCLE_BG_COLOR = (50, 50, 50, 245)
@@ -32,8 +33,28 @@ blinker_state = {
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog="TeslaCam Telemetry Viewer",
+        description="Processes Tesla dashcam footage and telemetry data to create a multi-camera overlay video with real-time vehicle telemetry information including speed, autopilot state, steering angle, and pedal positions.",
+        allow_abbrev=False,
+    )
 
-    input_path = Path("./sample/")
+    parser.add_argument("-i", "--input", help="input directory", required=True)
+    parser.add_argument("-o", "--output", help="output directory", required=True)
+    parser.add_argument(
+        "--no-overlay",
+        help="disables the telemetry overlay (enabled by default)",
+        action="store_false",
+        dest="overlay",
+    )
+    parser.add_argument(
+        "--mph", help="sets speed units to MPH (default is KM/H)", action="store_true"
+    )
+
+    args = parser.parse_args()
+
+    input_path = Path(args.input)
+    output_path = Path(args.output)
 
     if not input_path.is_dir():
         sys.exit(f"Input path '{input_path}' is not a directory.")
@@ -55,6 +76,11 @@ def main():
     first_timestamp = sorted(tesla_cam.keys())[0]
     temp_video_path = f"{input_path}/{tesla_cam[first_timestamp]['front']}"
 
+    if args.overlay:
+        output_filename = f"TeslaCam_{first_timestamp}"
+    else:
+        output_filename = f"TeslaCam_{first_timestamp}_no-overlay"
+
     cap_temp = cv.VideoCapture(temp_video_path)
     if not cap_temp.isOpened():
         sys.exit(f"FATAL: Could not open {temp_video_path} to get video properties.")
@@ -65,7 +91,7 @@ def main():
     cap_temp.release()
 
     # Define output file codec and create the VideoWriter object
-    output_filepath = f"./output/TeslaCam_{first_timestamp}.mp4"
+    output_filepath = f"{output_path}/{output_filename}.mp4"
     fourcc = cv.VideoWriter_fourcc(*"mp4v")
     out = cv.VideoWriter(
         output_filepath, fourcc, fps, (canvas_width, canvas_height), isColor=True
@@ -109,6 +135,7 @@ def main():
             cap_right_repeater=cap_right_repeater,
             telemetry_df=telemetry_df,
             out=out,
+            args=args,
         )
 
         # Release the input video captures for this timestamp
@@ -129,7 +156,7 @@ def main():
 
 
 def process_video(
-    cap_front, cap_back, cap_left_repeater, cap_right_repeater, telemetry_df, out
+    cap_front, cap_back, cap_left_repeater, cap_right_repeater, telemetry_df, out, args
 ):
     canvas_width = CANVAS_WIDTH
     canvas_height = CANVAS_HEIGHT
@@ -180,7 +207,8 @@ def process_video(
         canvas[546:720, 772:1004] = frame_right_repeater_resized
 
         # Write text overlay
-        canvas = draw_overlay(canvas, curr_frame, telemetry_df, frame_index)
+        if args.overlay:
+            canvas = draw_overlay(canvas, curr_frame, telemetry_df, frame_index, args)
 
         frame_index += 1
 
@@ -230,7 +258,7 @@ def compile_tesla_cam(input_path):
     return tesla_cam
 
 
-def draw_overlay(canvas, f, telemetry_df, frame_index):
+def draw_overlay(canvas, f, telemetry_df, frame_index, args):
     # Read current frame data
     current_frame_data = telemetry_df.iloc[frame_index]
 
@@ -323,7 +351,7 @@ def draw_overlay(canvas, f, telemetry_df, frame_index):
     draw = ImageDraw.Draw(roi_pil)
 
     # 2. Speed
-    speed, speed_unit = get_speed(f, current_frame_data)
+    speed, speed_unit = get_speed(f, current_frame_data, args)
     speed_x = get_text_x(speed, FONT_SPEED, draw, rec_center_x)
     speed_y = rec_center_y - 33
 
@@ -570,7 +598,7 @@ def get_text_y(text, font, draw, shape_center):
     return shape_center - (text_height // 2) - bbox[1]
 
 
-def get_gear_state(f, current_frame_data) -> str:
+def get_gear_state(f, current_frame_data):
     match current_frame_data["gear_state"]:
         case "GEAR_PARK":
             return "P"
@@ -584,7 +612,7 @@ def get_gear_state(f, current_frame_data) -> str:
             return ""
 
 
-def get_autopilot_state(f, current_frame_data) -> str:
+def get_autopilot_state(f, current_frame_data):
     match current_frame_data["autopilot_state"]:
         case "TACC":
             return "Cruise"
@@ -596,15 +624,19 @@ def get_autopilot_state(f, current_frame_data) -> str:
             return ""
 
 
-def get_speed(f, current_frame_data) -> int:
+def get_speed(f, current_frame_data, args):
     speed_mps = float(current_frame_data["vehicle_speed_mps"])
-    speed_kph = speed_mps * 3.6
-    speed_unit = "km/h"
-
-    if speed_kph < 0:
-        speed = f"{speed_kph*speed_kph:.0f}"
+    if args.mph:
+        speed = speed_mps * 2.237
+        speed_unit = "MPH"
     else:
-        speed = f"{speed_kph:.0f}"
+        speed = speed_mps * 3.6
+        speed_unit = "KM/H"
+
+    if speed < 0:
+        speed = f"{speed*speed:.0f}"
+    else:
+        speed = f"{speed:.0f}"
 
     return speed, speed_unit
 
