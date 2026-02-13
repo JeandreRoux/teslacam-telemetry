@@ -1,3 +1,14 @@
+"""
+Tesla Dashcam Telemetry Viewer
+
+Processes Tesla dashcam MP4 files and accompanying CSV telemetry files to
+produce a combined multi-camera overlay video with real-time telemetry
+rendered (speed, autopilot state, steering, brake/accelerator, blinkers).
+
+Usage:
+    python project.py -i <input_dir> -o <output_dir> [--no-overlay] [--mph] [--preview]
+"""
+
 import cv2 as cv
 import numpy as np
 from PIL import Image, ImageFont, ImageDraw
@@ -33,6 +44,7 @@ blinker_state = {
 
 
 def main():
+    """Parse CLI arguments, discover clip groups, and orchestrate processing."""
     parser = argparse.ArgumentParser(
         prog="Tesla Dashcam Telemetry Viewer",
         description="Processes Tesla dashcam footage and telemetry data to create a multi-camera overlay video with real-time vehicle telemetry information including speed, autopilot state, steering angle, and pedal positions.",
@@ -175,6 +187,7 @@ def main():
 def process_video(
     cap_front, cap_back, cap_left_repeater, cap_right_repeater, telemetry_df, out, args
 ):
+    """Compose frames from camera captures, optionally draw telemetry overlay, and write output."""
     canvas_width = CANVAS_WIDTH
     canvas_height = CANVAS_HEIGHT
 
@@ -248,6 +261,7 @@ def process_video(
 
 
 def compile_tesla_cam(input_path):
+    """Scan input directory and map timestamps to camera/telemetry filenames."""
     pattern = re.compile(
         r"([0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2})-([a-z_]+)\.(mp4|csv)"
     )
@@ -276,6 +290,7 @@ def compile_tesla_cam(input_path):
 
 
 def draw_overlay(canvas, f, telemetry_df, frame_index, args):
+    """Draw the telemetry overlay into a fixed ROI of the canvas."""
     # Read current frame data
     current_frame_data = telemetry_df.iloc[frame_index]
 
@@ -413,7 +428,8 @@ def draw_overlay(canvas, f, telemetry_df, frame_index, args):
     return canvas
 
 
-def draw_accelerator_pedal(f, current_frame_data, width=300, height=300):
+def draw_accelerator_pedal(current_frame_data, width=300, height=300):
+    """Create an accelerator pedal visualization as a PIL RGBA image."""
     accelerator_pedal_position = current_frame_data["accelerator_pedal_position"]
 
     if accelerator_pedal_position > 0:
@@ -457,7 +473,8 @@ def draw_accelerator_pedal(f, current_frame_data, width=300, height=300):
     return img
 
 
-def draw_brake_pedal(f, current_frame_data, width=300, height=300):
+def draw_brake_pedal(current_frame_data, width=300, height=300):
+    """Create a brake pedal visualization as a PIL RGBA image."""
     brake_pedal_state = current_frame_data["brake_applied"]
 
     if brake_pedal_state:
@@ -494,7 +511,8 @@ def draw_brake_pedal(f, current_frame_data, width=300, height=300):
     return img
 
 
-def draw_steering_wheel(f, current_frame_data, size=200):
+def draw_steering_wheel(current_frame_data, size=200):
+    """Create a steering wheel icon rotated by steering angle and colored by autopilot state."""
     steering_angle = int(current_frame_data["steering_wheel_angle"])
 
     match current_frame_data["autopilot_state"]:
@@ -552,10 +570,7 @@ def draw_steering_wheel(f, current_frame_data, size=200):
 
 
 def calculate_fill_angles(accelerator_pedal_position):
-    """
-    Calculates start and end angles for a bottom-top fill of the accelerator circle
-    percent: 0.0 to 1.0
-    """
+    """Compute start/end angles for a circular chord representing pedal fill."""
     fill_pct = int(accelerator_pedal_position) / 100
 
     # Calculate the vertical distance from the center (radius = 1)
@@ -574,6 +589,7 @@ def calculate_fill_angles(accelerator_pedal_position):
 
 
 def draw_left_blinker(blinker_fill, draw):
+    """Draw the left blinker polygon into the provided ImageDraw context."""
     shape = [
         (40, 35),  # Tip
         (50, 25),
@@ -588,6 +604,7 @@ def draw_left_blinker(blinker_fill, draw):
 
 
 def draw_right_blinker(blinker_fill, draw):
+    """Draw the right blinker polygon into the provided ImageDraw context."""
     shape = [
         (115, 30),
         (125, 30),
@@ -602,6 +619,7 @@ def draw_right_blinker(blinker_fill, draw):
 
 
 def get_text_x(text, font, draw, shape_center):
+    """Return the X coordinate to horizontally center text at a given center."""
     # bbox = (left, top, right, bottom)
     bbox = draw.textbbox((0, 0), text, font)
     text_width = bbox[2] - bbox[0]
@@ -609,13 +627,15 @@ def get_text_x(text, font, draw, shape_center):
 
 
 def get_text_y(text, font, draw, shape_center):
+    """Return the Y coordinate to vertically center text at a given center."""
     # bbox = (left, top, right, bottom)
     bbox = draw.textbbox((0, 0), text, font)
     text_height = bbox[3] - bbox[1]
     return shape_center - (text_height // 2) - bbox[1]
 
 
-def get_gear_state(f, current_frame_data):
+def get_gear_state(current_frame_data):
+    """Map telemetry 'gear_state' to a single-letter display."""
     match current_frame_data["gear_state"]:
         case "GEAR_PARK":
             return "P"
@@ -629,7 +649,8 @@ def get_gear_state(f, current_frame_data):
             return ""
 
 
-def get_autopilot_state(f, current_frame_data):
+def get_autopilot_state(current_frame_data):
+    """Map telemetry 'autopilot_state' to a user-friendly string."""
     match current_frame_data["autopilot_state"]:
         case "TACC":
             return "Cruise"
@@ -641,7 +662,8 @@ def get_autopilot_state(f, current_frame_data):
             return ""
 
 
-def get_speed(f, current_frame_data, args):
+def get_speed(current_frame_data, args):
+    """Convert and format vehicle speed according to CLI unit preference."""
     speed_mps = float(current_frame_data["vehicle_speed_mps"])
     if args.mph:
         speed = speed_mps * 2.237
