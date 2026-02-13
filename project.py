@@ -44,8 +44,7 @@ def main():
     parser.add_argument(
         "--no-overlay",
         help="disables the telemetry overlay (enabled by default)",
-        action="store_false",
-        dest="overlay",
+        action="store_true",
     )
     parser.add_argument(
         "--mph", help="sets speed units to MPH (default is KM/H)", action="store_true"
@@ -66,25 +65,36 @@ def main():
 
     tesla_cam = compile_tesla_cam(input_path)
 
-    missing_data_timestamps = []
-    for timestamp, files_info in tesla_cam.items():
-        if files_info.get("data") == None:
-            missing_data_timestamps.append(timestamp)
-    if missing_data_timestamps:
-        print("Error: The following timestamps are missing a data file:")
-        for ts in missing_data_timestamps:
-            print(f"- {ts}")
-        sys.exit("Processing aborted due to missing data files.")
+    if not args.no_overlay:
+        missing_data_timestamps = []
+        for timestamp, files_info in tesla_cam.items():
+            if files_info.get("data") == None:
+                missing_data_timestamps.append(timestamp)
+        if missing_data_timestamps:
+            print("Error: The following timestamps are missing a data file:")
+            for ts in missing_data_timestamps:
+                print(f"- {ts}")
+            while True:
+                response = input(
+                    "Would you like to continue without the telemetry overlay? 'y' or 'n': "
+                ).strip()
+                if response == "n":
+                    sys.exit("Processing aborted due to missing data files.")
+                elif response == "y":
+                    args.no_overlay = True
+                    break
+                else:
+                    print("Expected response 'y' or 'n'. Please try again.")
 
     # --- Initialize the VideoWriter ---
     # Get video properties
     first_timestamp = sorted(tesla_cam.keys())[0]
     temp_video_path = f"{input_path}/{tesla_cam[first_timestamp]['front']}"
 
-    if args.overlay:
-        output_filename = f"TeslaCam_{first_timestamp}"
-    else:
+    if args.no_overlay:
         output_filename = f"TeslaCam_{first_timestamp}_no-overlay"
+    else:
+        output_filename = f"TeslaCam_{first_timestamp}"
 
     cap_temp = cv.VideoCapture(temp_video_path)
     if not cap_temp.isOpened():
@@ -130,9 +140,7 @@ def main():
             except Exception as e:
                 print(f"Error loading telemetry data from {data_filepath}: {e}")
                 telemetry_df = None
-        else:
-            print(f"No telemetry data file found for timestamp: {timestamp}")
-            
+
         if args.preview:
             print("Loading preview... press 'q' to quit.")
             print("Processing videos...")
@@ -159,12 +167,9 @@ def main():
         if cap_right_repeater:
             cap_right_repeater.release()
 
-    
     print(f"Finished all clips. Releasing final video file: {output_filepath}")
     out.release()
     cv.destroyAllWindows()
-
-    ## Release capture of all clips: if cap_front: cap_front.release()
 
 
 def process_video(
@@ -218,11 +223,11 @@ def process_video(
         canvas[546:720, 772:1004] = frame_right_repeater_resized
 
         # Write text overlay
-        if args.overlay:
+        if not args.no_overlay:
             canvas = draw_overlay(canvas, curr_frame, telemetry_df, frame_index, args)
 
         frame_index += 1
-        
+
         if args.preview:
             cv.imshow("Preview", canvas)  # Shows the video in a window
             if cv.waitKey(1) & 0xFF == ord("q"):  # Lets you quit by pressing 'q'
