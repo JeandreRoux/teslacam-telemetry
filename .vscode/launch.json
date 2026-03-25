@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Tesla Project",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/project.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-i",
+                "C:\\Users\\Jeandre\\Documents\\TeslaCam\\Input",
+                "-o",
+                "C:\\Users\\Jeandre\\Documents\\TeslaCam\\Output"
+            ]
+        },
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        }
+    ]
+}
