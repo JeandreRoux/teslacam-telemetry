@@ -18,13 +18,12 @@ Processes Tesla dashcam MP4 files and accompanying CSV telemetry files to produc
 
 ## Layout
 
-![Screenshot of output layout](layout.png)
+![Screenshot of example output layout](example.png)
 
 
 ## Prerequisites
 1. **Python 3.10+**: Check version with `python --version` in a terminal window.
 2. **FFmpeg**: Required for video encoding. Verify with `ffmpeg -version`.
-3. **Telemetry Data**: This tool requires `.csv` data exported via the [Tesla SEI Explorer](https://teslamotors.github.io/dashcam/sei_explorer.html).
 
 ## Installation
 
@@ -57,28 +56,23 @@ Processes Tesla dashcam MP4 files and accompanying CSV telemetry files to produc
 
 ## Usage
 
-1. **Prepare your files**
-* Using the SEI Explorer, load **one** of the four clips in the timestamp set (front, back, left_repeater or right_repeater) and click `Export CSV` to download the `.csv` file containing the data.
-    _For Example: Load the ***front*** clip only and export the CSV file._
-* Place your `.mp4` Tesla dashcam clips and the exported telemetry `.csv` using the default filenames into the same input directory.
-
-2. **Run the script**
+1. **Run the script**
 ```bash
-python project.py --input /path/to/teslacam/clips --output /path/to/save/video
+python main.py --input /path/to/teslacam/clips --output /path/to/save/video
 ```
 
-3. **Optional Arguments**
+2. **Optional Arguments**
 * `--no-overlay`: Disables the telemetry overlay and only produces the multi-camera stitched video.
 * `--mph`: Sets the speed units to MPH. Default is KM/H.
 * `--preview`: Enables render preview while videos are being processed. Will cause processing to take slightly longer.
+* `--keep-csv`: Keeps generated `csv` data file, instead of just deleting it after use.
 
 ## 	Future Roadmap:
-* **Integrated Data Extraction**: Implement Tesla's `sei_extractor.py` to automatically pull telemetry data from clips, removing the need for the manual [SEI Explorer](https://teslamotors.github.io/dashcam/sei_explorer.html) step.
 * **Layout Options**: Allow users to toggle specific cameras (e.g. "Front View Only") or choose between different stitching configurations (Equal size 4x4 grid, Front and Rear in a 2x2 grid)
 * **Theming Engine**: Add 'Light' and 'Dark' mode presets for the telemetry overlay.
-* **GUI**: Build a simple interface so users can select input/output folders and other options via a file explorer, rather than the command line.
+* **GUI**: Build a graphical interface for ease of use.
 
 ## Troubleshooting
-Not all Tesla-generated dashcam clips contain SEI data. Only clips recorded on Tesla firmware 2025.44.25 or later and HW3 or above contain SEI data. If car is parked, SEI data may not be present.
-
+* Not all Tesla-generated dashcam clips contain SEI data. Only clips recorded on Tesla firmware 2025.44.25 or later and HW3 or above contain SEI data. If car is parked, SEI data may not be present.
 If no SEI metadata is found, ensure your dashcam footage meets these requirements.
+* If there is an error with data extraction and you meet the SEI data requirements above, you can extract the data manually via the [Tesla SEI Explorer](https://teslamotors.github.io/dashcam/sei_explorer.html) and place the `csv` file in the input directory before starting the program.

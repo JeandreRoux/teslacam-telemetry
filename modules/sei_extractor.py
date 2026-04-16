@@ -14,7 +14,7 @@ from typing import Generator, Optional, Tuple
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
 
-import dashcam_pb2
+from utils import dashcam_pb2
 
 
 def run():
@@ -35,16 +35,14 @@ def main(path: str):
         offset, size = find_mdat(fp)
         headers = [
             field.name for field in dashcam_pb2.SeiMetadata.DESCRIPTOR.fields]
-        # Define defaults for unset fields (match Tesla online extractor)
         defaults = {
             'accelerator_pedal_position': '0',
             'blinker_on_left': 'false',
             'blinker_on_right': 'false',
             'brake_applied': 'false',
             'autopilot_state': 'NONE',
-            'steering_wheel_angle': '0',  # If needed
-            'vehicle_speed_mps': '0',
-            # Add others as needed (e.g., latitude/longitude if blank)
+            'steering_wheel_angle': '0',
+            'vehicle_speed_mps': '0'
         }
 
         for meta in iter_sei_messages(fp, offset, size):
