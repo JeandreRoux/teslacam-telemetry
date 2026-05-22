@@ -175,8 +175,18 @@ def extract_sei_csv(path: str) -> str:
     csv_output = io.StringIO()
     with redirect_stdout(csv_output):
         main(path)
+
+    output = csv_output.getvalue().strip()
+    if not output:
+        return ""
     
-    return csv_output.getvalue().strip()
+    headers = [field.name for field in dashcam_pb2.SeiMetadata.DESCRIPTOR.fields]
+    expected_header = ",".join(headers)
+
+    if output.splitlines()[0] != expected_header:
+        return ""
+    
+    return output
 
 
 if __name__ == "__main__":

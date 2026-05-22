@@ -6,10 +6,11 @@ import sys
 from modules import config
 from modules import overlay_renderer
 from modules import data_handler
+from modules import layout
 
 
 def process_video(
-    cap_front, cap_back, cap_left_repeater, cap_right_repeater, telemetry_df, out, args, input_path, video_data
+    cap_front, cap_back, cap_left_repeater, cap_right_repeater, telemetry_df, out, args, input_path, video_data, selected_layout
 ):
     """Compose frames from camera captures, optionally draw telemetry overlay, and write output."""
     canvas_width = config.CANVAS_WIDTH
@@ -39,28 +40,17 @@ def process_video(
         # Create canvas
         canvas = np.zeros((canvas_height, canvas_width, 3), dtype=np.uint8)
 
-        # Resize videos
-        frame_front_resized = cv.resize(
-            frame_front, (728, 546), interpolation=cv.INTER_LANCZOS4
-        )
-        frame_back_resized = cv.resize(
-            frame_back, (232, 174), interpolation=cv.INTER_LANCZOS4
-        )
-        frame_left_repeater_resized = cv.resize(
-            frame_left_repeater, (232, 174), interpolation=cv.INTER_LANCZOS4
-        )
-        frame_right_repeater_resized = cv.resize(
-            frame_right_repeater, (232, 174), interpolation=cv.INTER_LANCZOS4
-        )
+        frames = {
+            "front": frame_front,
+            "back": frame_back,
+            "left_repeater": frame_left_repeater,
+            "right_repeater": frame_right_repeater,
+        }
 
-        # Position videos
-        canvas[0:546, 276:1004] = frame_front_resized
-        canvas[546:720, 524:756] = frame_back_resized
-        canvas[546:720, 276:508] = frame_left_repeater_resized
-        canvas[546:720, 772:1004] = frame_right_repeater_resized
+        canvas = layout.render_layout(canvas, frames, selected_layout)
 
         # Write text overlay
-        if not args.no_overlay:
+        if not args.no_overlay and telemetry_df is not None:
             canvas = overlay_renderer.draw_overlay(canvas, curr_frame, telemetry_df, frame_index, args)
 
         frame_index += 1

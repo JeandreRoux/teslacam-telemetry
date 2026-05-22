@@ -93,7 +93,7 @@ def draw_steering_wheel(current_frame_data, size=200):
     """Create a steering wheel icon rotated by steering angle and colored by autopilot state."""
     steering_angle = int(current_frame_data["steering_wheel_angle"])
     
-    if get_state.get_autopilot_state(current_frame_data) == ("Autopilot" or "Self Driving"):
+    if get_state.get_autopilot_state(current_frame_data) in ("Autopilot", "Self Driving"):
         color = config.FONT_BLUE
     else:
         color = config.FONT_WHITE

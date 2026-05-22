@@ -26,6 +26,7 @@ from modules import overlay_renderer
 from modules import data_handler
 from modules import video_processor
 from modules import sei_extractor
+from modules import layout
 
 
 def main():
@@ -65,20 +66,28 @@ def main():
         sys.exit(f"Input path '{input_path}' is not a directory.")
 
     video_data = data_handler.compile_video_data(input_path, args)
+    # Selected layout option - Will change in future for more layout options
+    selected_layout = layout.FOUR_CAMERA_DEFAULT
+    data_handler.validate_camera_data(video_data, selected_layout["required_cameras"])
+    data_handler.validate_telemetry_data(args, video_data, input_path)
 
     # --- Initialize the VideoWriter ---
     # Get video properties
     first_timestamp = sorted(video_data.keys())[0]
-    temp_video_path = f"{input_path}/{video_data[first_timestamp]['front']}"
+    reference_video = data_handler.get_available_video_file(video_data[first_timestamp])
+    if reference_video is None:
+        sys.exit("FATAL: No reference video file found.")
+
+    reference_video_path = input_path / reference_video
 
     if args.no_overlay:
         output_filename = f"TeslaCam_{first_timestamp}_no-overlay"
     else:
         output_filename = f"TeslaCam_{first_timestamp}"
 
-    cap_temp = cv.VideoCapture(temp_video_path)
+    cap_temp = cv.VideoCapture(reference_video_path)
     if not cap_temp.isOpened():
-        sys.exit(f"FATAL: Could not open {temp_video_path} to get video properties.")
+        sys.exit(f"FATAL: Could not open {reference_video_path} to get video properties.")
 
     canvas_width = config.CANVAS_WIDTH
     canvas_height = config.CANVAS_HEIGHT
@@ -100,22 +109,22 @@ def main():
         cap_right_repeater = None
         telemetry_df = None
 
-        if video_data[timestamp]["front"]:
+        if video_data[timestamp].get("front"):
             cap_front = cv.VideoCapture(f"{input_path}/{video_data[timestamp]['front']}")
             total_frames = int(cap_front.get(cv.CAP_PROP_FRAME_COUNT))
-        if video_data[timestamp]["back"]:
+        if video_data[timestamp].get("back"):
             cap_back = cv.VideoCapture(f"{input_path}/{video_data[timestamp]['back']}")
-        if video_data[timestamp]["left_repeater"]:
+        if video_data[timestamp].get("left_repeater"):
             cap_left_repeater = cv.VideoCapture(
                 f"{input_path}/{video_data[timestamp]['left_repeater']}"
             )
-        if video_data[timestamp]["right_repeater"]:
+        if video_data[timestamp].get("right_repeater"):
             cap_right_repeater = cv.VideoCapture(
                 f"{input_path}/{video_data[timestamp]['right_repeater']}"
             )
 
-        if video_data[timestamp]["data"]:
-            data_filepath = f"{input_path}/{video_data[timestamp]['data']}"
+        if video_data[timestamp].get("data"):
+            data_filepath = input_path / video_data[timestamp]['data']
             try:
                 telemetry_df = pd.read_csv(data_filepath)
                 if len(telemetry_df) != total_frames:
@@ -147,7 +156,8 @@ def main():
             out=out,
             args=args,
             input_path=input_path,
-            video_data=video_data
+            video_data=video_data,
+            selected_layout=selected_layout
         )
 
         # Release the input video captures for this timestamp

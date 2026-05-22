@@ -22,37 +22,38 @@ Processes Tesla dashcam MP4 files and accompanying CSV telemetry files to produc
 
 
 ## Prerequisites
-1. **Python 3.10+**: Check version with `python --version` in a terminal window.
+1. **Python 3.12+**: Check version with `python --version` in a terminal window.
 2. **FFmpeg**: Required for video encoding. Verify with `ffmpeg -version`.
 
 ## Installation
 
-1.	**Clone this repository**:
-    ```bash
-    git clone [https://github.com/JeandreRoux/tesla-dashcam-telemetry-viewer.git](https://github.com/JeandreRoux/tesla-dashcam-telemetry-viewer.git)
-    cd tesla-dashcam-telemetry-viewer
+1. **Clone this repository**:
+   ```bash
+   git clone https://github.com/JeandreRoux/tesla-dashcam-telemetry-viewer.git
+   cd tesla-dashcam-telemetry-viewer
+   ```
 
-2.	**Install dependencies**:
-	```bash
-	pip install -r requirements.txt
-	```
-3.	**Install FFmpeg (if not already installed)**:
-	* **Windows**:
-	1. Open PowerShell as Administrator (Right-click the Start button > Terminal Admin)
-	2. Run the following command:
-	```bash
-	winget install ffmpeg
-	```
-	* **macOS**:
-	Open Terminal and run:
-	```bash
-	brew install ffmpeg
-	```
-	* **Linux (Ubuntu/Debian)**
-	Open Terminal and run:
-	```bash
-	sudo apt update && sudo apt install ffmpeg
-	```
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Install FFmpeg (if not already installed)**:
+   * **Windows**:
+   1. Open PowerShell as Administrator (Right-click the Start button > Terminal Admin)
+   2. Run the following command:
+      ```bash
+      winget install ffmpeg
+      ```
+   * **macOS**:
+   Open Terminal and run:
+   ```bash
+   brew install ffmpeg
+   ```
+   * **Linux (Ubuntu/Debian)**
+   Open Terminal and run:
+   ```bash
+   sudo apt update && sudo apt install ffmpeg
+   ```
 
 ## Usage
 
