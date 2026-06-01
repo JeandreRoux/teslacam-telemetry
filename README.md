@@ -137,3 +137,6 @@ python main.py --input /path/to/teslacam/clips --output /path/to/save/video
 * Not all Tesla-generated dashcam clips contain SEI data. Only clips recorded on Tesla firmware 2025.44.25 or later and HW3 or above contain SEI data. If car is parked, SEI data may not be present.
 If no SEI metadata is found, ensure your dashcam footage meets these requirements.
 * If there is an error with data extraction and you meet the SEI data requirements above, you can extract the data manually via the [Tesla SEI Explorer](https://teslamotors.github.io/dashcam/sei_explorer.html) and place the `csv` file in the input directory before starting the program.
+
+## Attribution
+The SEI extraction logic in `modules/sei_extractor.py` is adapted from Tesla-provided dashcam SEI extraction code and has been modified for use as part of this project.
