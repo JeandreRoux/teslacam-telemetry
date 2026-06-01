@@ -54,8 +54,8 @@ def compile_video_data(input_path: Path, settings: RenderSettings) -> VideoData:
                 print(f"Found telemetry CSV: {video_data[timestamp]['data']}")
             else:
                 video_data[timestamp][file_id] = item.name
-
-    video_data = generate_sei_data(video_data, input_path, settings)
+    if not settings.no_overlay:
+        video_data = generate_sei_data(video_data, input_path, settings)
 
     return video_data
 
@@ -97,6 +97,7 @@ def generate_sei_data(
             else:
                 print(f"Warning: No SEI data in {mp4_path}")
                 settings.no_overlay = telemetry_user_input()
+                break
         except Exception as e:
             print(f"Error generating CSV for {timestamp}: {e}")
     return video_data

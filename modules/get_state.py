@@ -24,7 +24,7 @@ def get_autopilot_state(current_frame_data: pd.Series) -> str:
         case "TACC":
             return "Cruise"
         case "AUTOSTEER":
-            return "Autopilot"
+            return "Autosteer"
         case "SELF_DRIVING":
             return "Self Driving"
         case _:

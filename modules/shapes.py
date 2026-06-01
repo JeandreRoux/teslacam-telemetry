@@ -71,7 +71,7 @@ def draw_brake_pedal(current_frame_data, width=300, height=300):
     pedal_y = (height // 2) - (pedal_height // 2)
 
     if brake_pedal_state:
-        draw.ellipse((0, 0, 300, 300), fill=config.PEDAL_ACTIVE_CIRCLE)
+        draw.ellipse((0, 0, 300, 300), fill=config.BRAKE_PEDAL_ACTIVE_CIRCLE)
 
     # Draw the main pedal body
     shape = [pedal_x, pedal_y, pedal_x + pedal_width, pedal_y + pedal_height]
@@ -94,7 +94,7 @@ def draw_steering_wheel(current_frame_data, size=200):
     steering_angle = int(current_frame_data["steering_wheel_angle"])
 
     if get_state.get_autopilot_state(current_frame_data) in (
-        "Autopilot",
+        "Autosteer",
         "Self Driving",
     ):
         color = config.FONT_BLUE

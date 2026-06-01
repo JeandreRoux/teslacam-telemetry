@@ -55,7 +55,7 @@ class TestGetAutopilotState(unittest.TestCase):
 
         autopilot_state = get_autopilot_state(current_frame_data)
 
-        self.assertEqual(autopilot_state, "Autopilot")
+        self.assertEqual(autopilot_state, "Autosteer")
 
     def test_unknown_autopilot_state_maps_to_empty_string(self):
         current_frame_data = {"autopilot_state": "NONE"}

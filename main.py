@@ -63,70 +63,72 @@ def main():
     if not input_path.is_dir():
         sys.exit(f"Input path '{input_path}' is not a directory.")
 
-    video_data = data_handler.compile_video_data(input_path, settings)
-    data_handler.validate_camera_data(video_data, settings.layout)
-    data_handler.validate_telemetry_data(settings, video_data, input_path)
-
-    # --- Initialize the VideoWriter ---
-    # Get video properties
-    first_timestamp, fps = video_processor.get_video_fps(input_path, video_data)
-
-    if settings.no_overlay:
-        output_filename = f"TeslaCam_{first_timestamp}_no-overlay"
-    else:
-        output_filename = f"TeslaCam_{first_timestamp}"
-
-    out, output_filepath = video_processor.create_video_writer(
-        output_path=output_path,
-        output_filename=output_filename,
-        fps=fps,
-    )
+    video_data = {}
 
     try:
-        for timestamp in sorted(video_data.keys()):
-            telemetry_df = None
+        video_data = data_handler.compile_video_data(input_path, settings)
+        data_handler.validate_camera_data(video_data, settings.layout)
+        data_handler.validate_telemetry_data(settings, video_data, input_path)
 
-            captures = video_processor.open_captures(
-                input_path=input_path,
-                files_info=video_data[timestamp],
-                layout=settings.layout,
-            )
+        first_timestamp, fps = video_processor.get_video_fps(input_path, video_data)
 
-            try:
-                total_frames = video_processor.get_total_frames(
-                    captures,
-                    settings.layout,
+        if settings.no_overlay:
+            output_filename = f"TeslaCam_{first_timestamp}_no-overlay"
+        else:
+            output_filename = f"TeslaCam_{first_timestamp}"
+
+        out, output_filepath = video_processor.create_video_writer(
+            output_path=output_path,
+            output_filename=output_filename,
+            fps=fps,
+        )
+
+        try:
+            for timestamp in sorted(video_data.keys()):
+                telemetry_df = None
+
+                captures = video_processor.open_captures(
+                    input_path=input_path,
+                    files_info=video_data[timestamp],
+                    layout=settings.layout,
                 )
 
-                data_file = video_data[timestamp].get("data")
-                if data_file:
-                    telemetry_df = data_handler.load_telemetry_data(
-                        input_path=input_path,
-                        data_file=data_file,
-                        total_frames=total_frames,
-                        settings=settings,
+                try:
+                    total_frames = video_processor.get_total_frames(
+                        captures,
+                        settings.layout,
                     )
 
-                if settings.preview:
-                    print("Loading preview... press 'q' to quit.")
-                    print("Processing videos...")
-                else:
-                    print("Processing videos...")
+                    data_file = video_data[timestamp].get("data")
+                    if data_file:
+                        telemetry_df = data_handler.load_telemetry_data(
+                            input_path=input_path,
+                            data_file=data_file,
+                            total_frames=total_frames,
+                            settings=settings,
+                        )
 
-                video_processor.process_video(
-                    captures=captures,
-                    telemetry_df=telemetry_df,
-                    out=out,
-                    settings=settings,
-                )
-            finally:
-                video_processor.release_captures(captures)
+                    if settings.preview:
+                        print("Loading preview... press 'q' to quit.")
+                        print("Processing videos...")
+                    else:
+                        print("Processing videos...")
 
-        print(f"Finished all clips. Released final video file: {output_filepath}")
+                    video_processor.process_video(
+                        captures=captures,
+                        telemetry_df=telemetry_df,
+                        out=out,
+                        settings=settings,
+                    )
+                finally:
+                    video_processor.release_captures(captures)
+
+            print(f"Finished all clips. Released final video file: {output_filepath}")
+        finally:
+            out.release()
+            video_processor.close_preview_windows()
     finally:
         data_handler.remove_generated_csv(input_path, video_data, settings)
-        out.release()
-        video_processor.close_preview_windows()
 
 
 if __name__ == "__main__":
