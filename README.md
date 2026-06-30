@@ -56,6 +56,7 @@ This is an unofficial community project and is not affiliated with, endorsed by,
    ```bash
    python -m pip install .
    teslacam-telemetry --help
+   teslacam-telemetry-ui --help
    ```
 
    To update an existing normal install after pulling new code:
@@ -63,6 +64,7 @@ This is an unofficial community project and is not affiliated with, endorsed by,
    git pull
    python -m pip install --upgrade .
    teslacam-telemetry --help
+   teslacam-telemetry-ui --help
    ```
 
    To uninstall the app:
@@ -136,6 +138,41 @@ You can also disable dashcam encryption in the vehicle under `Controls > Safety 
 
 ## Usage
 
+### Desktop app
+
+For most users, the desktop app is the easiest way to render TeslaCam footage:
+
+```bash
+teslacam-telemetry-ui
+```
+
+![Screenshot of the TeslaCam Telemetry desktop app](docs/assets/desktop-ui.png)
+
+The desktop app provides a simple workflow:
+
+1. Choose the TeslaCam input folder containing the camera MP4 files.
+2. The app automatically scans the folder and detects the camera set.
+3. Choose an output folder.
+4. Select render options:
+   * **Telemetry overlay**: Adds speed, gear, steering, pedal, and driving-state data when telemetry is available.
+   * **Use MPH**: Shows speed in MPH instead of KM/H.
+   * **Keep generated CSV**: Keeps telemetry CSV files generated from embedded SEI metadata.
+5. Click **Render**.
+6. When rendering completes, click **Open output folder** to view the finished video.
+
+The app does not choose a layout when it first opens. After you select an input folder, it scans the footage and auto-selects the matching layout:
+
+* **Four-camera standard** for front, back, left repeater, and right repeater clips.
+* **Six-camera grid** for front, back, repeaters, and pillar-camera clips.
+
+You can also prefill folders from the command line:
+
+```bash
+teslacam-telemetry-ui --input /path/to/teslacam/clips --output /path/to/save/video
+```
+
+### Command line
+
 1. **Run the app**
    ```bash
    teslacam-telemetry --input /path/to/teslacam/clips --output /path/to/save/video
@@ -148,11 +185,17 @@ You can also disable dashcam encryption in the vehicle under `Controls > Safety 
 * `--keep-csv`: Keeps generated `csv` data file, instead of just deleting it after use.
 
 ## Future Roadmap
-* **Layout Presets**: Choose from focused, grid, and single-camera export layouts.
-* **Camera Selection**: Include only the camera angles needed for each output.
-* **Desktop App**: Provide a graphical interface for selecting clips, configuring exports, and previewing results.
-* **G-Force Indicator**: Visualize acceleration, braking, and cornering forces from embedded accelerometer telemetry.
-* **Location Info**: Show heading and GPS coordinates, with room for future mapping features.
+The long-term direction is to make TeslaCam Telemetry a simple, reliable utility for turning raw TeslaCam folders into polished multi-camera videos without requiring Python or command-line knowledge.
+
+Planned priorities:
+
+* **Windows Executable**: Provide a packaged `TeslaCam Telemetry.exe` / portable ZIP so non-technical users can download, extract, and run the app without installing Python manually.
+* **Smarter Desktop Workflow**: Add drag-and-drop input, clearer scan summaries, and stronger preflight validation for missing clips, mixed camera sets, and telemetry availability before rendering starts.
+* **Layout Options**: Add a friendly layout selector with generic names such as **Four-camera standard**, **Six-camera grid**, **Front focus**, and **Balanced grid**, avoiding hardware-specific labels in the UI.
+* **Clip Group Selection**: Show detected timestamp/event groups so users can render all clips, selected clips, a time range, or separate outputs per event.
+* **Render Presets**: Provide simple output-quality choices such as fast preview, standard quality, high quality, and smaller shareable files.
+* **Progress, Cancel, and Logs**: Improve long-render feedback with current clip/frame progress, safe cancellation, and shareable troubleshooting logs.
+* **Telemetry Overlay Presets**: Offer cleaner overlay styles such as minimal, detailed, and video-only, with more control over which telemetry fields are shown.
 
 ## Known Limitations
 * Mixed four-camera and six-camera batches are not rendered together in one output; each batch must use one complete camera set.
