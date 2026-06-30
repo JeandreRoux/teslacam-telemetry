@@ -1,1 +1,1 @@
-"""Utility modules for Tesla Dashcam Telemetry Viewer."""
+"""Utility modules for TeslaCam Telemetry."""

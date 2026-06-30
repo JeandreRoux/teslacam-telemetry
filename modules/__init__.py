@@ -1,1 +1,1 @@
-"""Application modules for Tesla Dashcam Telemetry Viewer."""
+"""Application modules for TeslaCam Telemetry."""

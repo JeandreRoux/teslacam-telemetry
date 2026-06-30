@@ -1,6 +1,6 @@
-# Tesla Dashcam Telemetry Viewer
+# TeslaCam Telemetry
 
-Processes Tesla dashcam MP4 files and accompanying CSV telemetry files to produce a combined multi-camera video with real-time telemetry overlay.
+Processes TeslaCam MP4 files and accompanying CSV telemetry files to produce a combined multi-camera video with real-time telemetry overlay.
 
 This is an unofficial community project and is not affiliated with, endorsed by, or supported by Tesla.
 
@@ -31,8 +31,8 @@ This is an unofficial community project and is not affiliated with, endorsed by,
 
 1. **Clone this repository**:
    ```bash
-   git clone https://github.com/JeandreRoux/tesla-dashcam-telemetry-viewer.git
-   cd tesla-dashcam-telemetry-viewer
+   git clone https://github.com/JeandreRoux/teslacam-telemetry.git
+   cd teslacam-telemetry
    ```
 
 2. **Create a virtual environment**:

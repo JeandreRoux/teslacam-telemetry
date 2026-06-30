@@ -1,7 +1,7 @@
 """
-Tesla Dashcam Telemetry Viewer
+TeslaCam Telemetry
 
-Processes Tesla dashcam MP4 files and accompanying CSV telemetry files to
+Processes TeslaCam MP4 files and accompanying CSV telemetry files to
 produce a combined multi-camera video with real-time telemetry
 overlay (speed, autopilot state, steering, brake/accelerator, blinkers).
 
@@ -22,8 +22,8 @@ from modules.settings import RenderSettings
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="Tesla Dashcam Telemetry Viewer",
-        description="Processes Tesla dashcam footage and telemetry data to create a multi-camera overlay video with real-time vehicle telemetry information including speed, autopilot state, steering angle, and pedal positions.",
+        prog="TeslaCam Telemetry",
+        description="Processes TeslaCam footage and telemetry data to create a multi-camera overlay video with real-time vehicle telemetry information including speed, autopilot state, steering angle, and pedal positions.",
         allow_abbrev=False,
     )
 
