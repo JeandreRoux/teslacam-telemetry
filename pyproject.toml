@@ -42,7 +42,8 @@ Issues = "https://github.com/JeandreRoux/teslacam-telemetry/issues"
 
 [tool.setuptools]
 py-modules = ["main"]
-packages = ["modules", "utils"]
+packages = ["modules", "utils", "utils.fonts"]
 
 [tool.setuptools.package-data]
-utils = ["fonts/*.ttf", "*.proto"]
+utils = ["*.proto"]
+"utils.fonts" = ["*.ttf"]
