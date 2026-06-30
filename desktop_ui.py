@@ -195,7 +195,7 @@ def create_main_window(qt: dict[str, object]):
             layout_group = QGroupBox("Layout")
             layout_box = QVBoxLayout(layout_group)
             self.layout_combo = QComboBox()
-            self.layout_combo.addItems(ui_helpers.available_layout_labels())
+            self.layout_combo.setPlaceholderText("Select an input folder to detect layout")
             self.layout_combo.setEnabled(False)
             self.layout_combo.setToolTip("The first desktop UI auto-selects the default layout for the detected camera set. Manual layout choices come next.")
             self.layout_combo.currentTextChanged.connect(self._update_layout_diagram)
@@ -208,7 +208,7 @@ def create_main_window(qt: dict[str, object]):
             layout_box.addWidget(self.layout_combo)
             layout_box.addWidget(self.diagram_label)
             main_layout.addWidget(layout_group)
-            self._update_layout_diagram(self.layout_combo.currentText())
+            self._show_layout_placeholder()
 
             options_group = QGroupBox("Options")
             options_layout = QHBoxLayout(options_group)
@@ -302,6 +302,11 @@ def create_main_window(qt: dict[str, object]):
         def _update_layout_diagram(self, label: str):
             self.diagram_label.setText(ui_helpers.layout_diagram(ui_helpers.layout_for_display_name(label)))
 
+        def _show_layout_placeholder(self):
+            self.layout_combo.clear()
+            self.layout_combo.setPlaceholderText("Select an input folder to detect layout")
+            self.diagram_label.setText(ui_helpers.layout_diagram(None))
+
         def _append_log(self, message: str):
             self.log_panel.append(message)
 
@@ -314,6 +319,7 @@ def create_main_window(qt: dict[str, object]):
         def _on_input_changed(self):
             self._last_scan = None
             self.open_output_button.setEnabled(False)
+            self._show_layout_placeholder()
             self.status_label.setText("Input changed. Scanning will run automatically when the folder is selected.")
             self._sync_buttons()
 
@@ -385,9 +391,15 @@ def create_main_window(qt: dict[str, object]):
             self._last_scan = scan_result
             if scan_result.layout is not None:
                 label = ui_helpers.layout_display_name(scan_result.layout)
+                self.layout_combo.clear()
+                self.layout_combo.addItems(ui_helpers.available_layout_labels())
                 index = self.layout_combo.findText(label)
                 if index >= 0:
                     self.layout_combo.setCurrentIndex(index)
+                else:
+                    self._update_layout_diagram(label)
+            else:
+                self._show_layout_placeholder()
             summary = ui_helpers.format_scan_summary_for_ui(scan_result)
             self._append_log(summary)
             self.status_label.setText("Ready to render." if scan_result.is_ready else "Scan found issues. See log.")
