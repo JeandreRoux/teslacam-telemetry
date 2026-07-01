@@ -89,9 +89,11 @@ class TestUiLayoutHelpers(unittest.TestCase):
         self.assertIn("15/10 frames", status)
 
     def test_default_output_folder_is_next_to_input(self):
+        input_path = Path.cwd() / "TeslaCam" / "SavedClips"
+
         self.assertEqual(
-            ui_helpers.default_output_folder("/tmp/TeslaCam/SavedClips"),
-            Path("/tmp/TeslaCam/teslacam-telemetry-output"),
+            ui_helpers.default_output_folder(input_path),
+            input_path.parent / "teslacam-telemetry-output",
         )
 
 
