@@ -131,7 +131,7 @@ You can also disable dashcam encryption in the vehicle under `Controls > Safety 
 
 ### Desktop app
 
-For most users, the desktop app is the easiest way to render TeslaCam footage:
+The desktop app is the easiest way to render your TeslaCam footage:
 
 ```bash
 teslacam-telemetry-ui
@@ -177,9 +177,9 @@ teslacam-telemetry-ui --input /path/to/teslacam/clips --output /path/to/save/vid
 ## Future Roadmap
 Planned priorities:
 
-* **Windows app download**: Provide a packaged `.exe` or portable ZIP so users do not need to install Python manually.
+* **Windows app download**: Provide a packaged `.exe` or portable ZIP so you do not need to install Python manually.
 * **Layout choices**: Add friendly layout options such as **Four-camera standard**, **Six-camera grid**, **Front focus**, and **Balanced grid**.
-* **Clip selection**: Show detected clip groups so users can render everything, selected clips, or a time range.
+* **Clip selection**: Show detected clip groups so you can render everything, selected clips, or a time range.
 * **Render presets**: Add simple quality choices such as fast preview, standard quality, high quality, and smaller shareable files.
 * **Better render controls**: Add clearer progress, cancellation, and troubleshooting details for long renders.
 * **Overlay presets**: Add simple telemetry overlay styles such as minimal, detailed, and video-only.
