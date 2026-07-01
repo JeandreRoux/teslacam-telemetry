@@ -27,7 +27,13 @@ TeslaCamTelemetry.exe
 
 The **Windows App** workflow builds the same app folder on `windows-latest` and uploads it as a workflow artifact. GitHub downloads artifacts as ZIP files, so the workflow uploads the app folder directly to avoid a ZIP inside another ZIP.
 
-For now, the artifact is for testing only. It is not attached to releases automatically, and it is not the `v1` executable yet.
+The **Release** workflow runs when a `v*.*.*` tag is pushed. It builds the Python package and the Windows portable app, then attaches both to the GitHub Release. The Windows release asset is named like:
+
+```text
+TeslaCamTelemetry-v0.4.0-windows-portable.zip
+```
+
+For now, the Windows ZIP is still a pre-v1 portable test build, not the final `v1` executable.
 
 ## Current packaging expectations
 
