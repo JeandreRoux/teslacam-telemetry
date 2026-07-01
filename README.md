@@ -25,7 +25,7 @@ This is an unofficial community project and is not affiliated with, endorsed by,
 
 ## Prerequisites
 1. **Python 3.11+**: Check version with `python --version` in a terminal window.
-2. **MP4 codec support**: OpenCV needs MP4 encoding support to write the output video. The desktop app and command line check this at startup and show OS-specific FFmpeg install instructions if MP4 output is unavailable.
+2. **MP4 video support**: The app checks this at startup and will show FFmpeg install instructions if MP4 output is unavailable.
 
 ## Installation
 
@@ -66,23 +66,6 @@ This is an unofficial community project and is not affiliated with, endorsed by,
    To uninstall the app:
    ```bash
    python -m pip uninstall teslacam-telemetry
-   ```
-
-5. **Install FFmpeg (if needed)**:
-
-   **Windows**:
-   ```powershell
-   winget install ffmpeg
-   ```
-
-   **macOS**:
-   ```bash
-   brew install ffmpeg
-   ```
-
-   **Linux (Ubuntu/Debian)**:
-   ```bash
-   sudo apt update && sudo apt install ffmpeg
    ```
 
 ## Input Files
