@@ -59,6 +59,11 @@ class RenderJob:
     settings: RenderSettings
     selected_timestamps: tuple[str, ...] | None = None
     prompt_for_telemetry: bool = False
+    cancel_requested: Callable[[], bool] | None = None
+
+
+class RenderCancelled(RuntimeError):
+    """Raised when a desktop render is cancelled by the user."""
 
 
 class TelemetryPromptRequired(RuntimeError):
@@ -328,6 +333,11 @@ def build_camera_preview_frame(
             capture.release()
 
 
+def _raise_if_cancelled(job: RenderJob) -> None:
+    if job.cancel_requested is not None and job.cancel_requested():
+        raise RenderCancelled("Render cancelled.")
+
+
 def render_video(
     job: RenderJob,
     progress_callback: ProgressCallback | None = None,
@@ -342,7 +352,9 @@ def render_video(
     if not input_path.is_dir():
         raise SystemExit(f"Input path '{input_path}' is not a directory.")
 
+    _raise_if_cancelled(job)
     video_data: data_handler.VideoData = {}
+    output_filepath: Path | None = None
 
     try:
         video_data = data_handler.compile_video_data(
@@ -376,9 +388,11 @@ def render_video(
             video_data = data_handler.generate_sei_data(video_data, input_path, settings)
         data_handler.validate_telemetry_data(settings, video_data, input_path)
         _validate_telemetry_frame_counts_before_render(settings, video_data, input_path)
+        _raise_if_cancelled(job)
 
         first_timestamp, fps = video_processor.get_video_fps(input_path, video_data)
         output_filename = _output_filename(first_timestamp, settings)
+        _raise_if_cancelled(job)
 
         out, output_filepath = video_processor.create_video_writer(
             output_path=output_path,
@@ -391,6 +405,7 @@ def render_video(
 
         try:
             for clip_index, timestamp in enumerate(sorted_timestamps, start=1):
+                _raise_if_cancelled(job)
                 telemetry_df = None
 
                 captures = video_processor.open_captures(
@@ -421,6 +436,7 @@ def render_video(
                         print("Processing videos...")
 
                     def on_frame(frames_written: int) -> None:
+                        _raise_if_cancelled(job)
                         if progress_callback is None:
                             return
                         progress_callback(
@@ -448,6 +464,10 @@ def render_video(
         finally:
             out.release()
             video_processor.close_preview_windows()
+    except RenderCancelled:
+        if output_filepath is not None:
+            output_filepath.unlink(missing_ok=True)
+        raise
     finally:
         data_handler.remove_generated_csv(input_path, video_data, settings)
 

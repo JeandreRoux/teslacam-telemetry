@@ -121,6 +121,7 @@ def create_main_window(qt: dict[str, object]):
         scan_finished = Signal(object)
         render_progress = Signal(object)
         render_finished = Signal(object)
+        render_cancelled = Signal(str)
         telemetry_prompt_required = Signal(object)
         failed = Signal(str)
         log = Signal(str)
@@ -132,6 +133,14 @@ def create_main_window(qt: dict[str, object]):
             self.input_path = input_path
             self.output_path = output_path
             self.options = options
+            self._cancel_requested = False
+
+        @Slot()
+        def cancel(self):
+            self._cancel_requested = True
+
+        def is_cancel_requested(self) -> bool:
+            return self._cancel_requested
 
         @Slot()
         def run(self):
@@ -156,10 +165,13 @@ def create_main_window(qt: dict[str, object]):
                             settings,
                             selected_timestamps=self.options.selected_timestamps or None,
                             prompt_for_telemetry=True,
+                            cancel_requested=self.is_cancel_requested,
                         ),
                         progress_callback=self.render_progress.emit,
                     )
                     self.render_finished.emit(result)
+            except app_service.RenderCancelled as error:
+                self.render_cancelled.emit(str(error))
             except app_service.TelemetryPromptRequired as error:
                 self.telemetry_prompt_required.emit(error)
             except BaseException as error:  # surface SystemExit from the shared render pipeline too
@@ -310,6 +322,7 @@ def create_main_window(qt: dict[str, object]):
             self._mp4_output_supported = True
             self._pending_render_without_telemetry = False
             self._telemetry_prompt_active = False
+            self._active_action: str | None = None
             self.setWindowTitle(APP_NAME)
             self.resize(960, 720)
             self._build_ui()
@@ -397,10 +410,14 @@ def create_main_window(qt: dict[str, object]):
             self.render_button = QPushButton("Render")
             self.render_button.setObjectName("PrimaryButton")
             self.render_button.clicked.connect(self.render)
+            self.cancel_button = QPushButton("Cancel render")
+            self.cancel_button.clicked.connect(self.cancel_render)
+            self.cancel_button.setEnabled(False)
             self.open_output_button = QPushButton("Open output folder")
             self.open_output_button.clicked.connect(self.open_output_folder)
             self.open_output_button.setEnabled(False)
             actions.addWidget(self.render_button)
+            actions.addWidget(self.cancel_button)
             actions.addWidget(self.open_output_button)
             actions.addStretch(1)
             main_layout.addLayout(actions)
@@ -591,6 +608,7 @@ def create_main_window(qt: dict[str, object]):
 
         def _sync_buttons(self):
             busy = self._thread is not None
+            rendering = busy and self._active_action == "render"
             has_input = bool(self.input_edit.text().strip())
             has_output = bool(self.output_edit.text().strip())
             has_selected_clip = bool(
@@ -605,6 +623,7 @@ def create_main_window(qt: dict[str, object]):
                 and not busy
                 and has_selected_clip
             )
+            self.cancel_button.setEnabled(rendering)
             self.input_browse_button.setEnabled(not busy)
             self.output_browse_button.setEnabled(not busy)
             self.customize_clips_button.setEnabled(
@@ -658,6 +677,7 @@ def create_main_window(qt: dict[str, object]):
             input_path = self._path_from_edit(self.input_edit.text())
             output_text = self.output_edit.text().strip()
             output_path = self._path_from_edit(output_text) if output_text else None
+            self._active_action = action
             self._thread = QThread(self)
             self._worker = Worker(action, input_path, output_path, self._options())
             self._worker.moveToThread(self._thread)
@@ -677,6 +697,7 @@ def create_main_window(qt: dict[str, object]):
                 self.progress.setValue(0)
                 self._worker.render_progress.connect(self._on_render_progress)
                 self._worker.render_finished.connect(self._on_render_finished)
+                self._worker.render_cancelled.connect(self._on_render_cancelled)
                 self._set_busy(True, "Rendering video…")
             self._thread.start()
 
@@ -685,6 +706,7 @@ def create_main_window(qt: dict[str, object]):
             self._pending_render_without_telemetry = False
             self._thread = None
             self._worker = None
+            self._active_action = None
             self.progress.setRange(0, 100)
             self._sync_buttons()
             if retry_without_telemetry:
@@ -697,6 +719,14 @@ def create_main_window(qt: dict[str, object]):
 
         def render(self):
             self._start_worker("render")
+
+        def cancel_render(self):
+            if self._worker is None or self._active_action != "render":
+                return
+            self.cancel_button.setEnabled(False)
+            self.status_label.setText("Cancelling render…")
+            self._append_log("Cancelling render…")
+            self._worker.cancel()
 
         def _on_scan_finished(self, scan_result):
             self._last_scan = scan_result
@@ -737,6 +767,14 @@ def create_main_window(qt: dict[str, object]):
             output_text = self._native_path_text(result.output_path)
             self.status_label.setText(f"Finished: {output_text}")
             self._append_log(f"Finished: {output_text}")
+
+        def _on_render_cancelled(self, message: str):
+            self.progress.setRange(0, 100)
+            self.progress.setValue(0)
+            self.open_output_button.setEnabled(False)
+            self.status_label.setText("Render cancelled.")
+            self._append_log(message or "Render cancelled.")
+            self._append_log("Partial output was removed.")
 
         def _on_telemetry_prompt_required(self, prompt):
             if self._telemetry_prompt_active:

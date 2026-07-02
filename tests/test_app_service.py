@@ -468,6 +468,60 @@ class TestRenderVideo(unittest.TestCase):
             remove_generated_csv.assert_called_once_with(input_path, generated_video_data, settings)
             self.assertEqual(result.clip_count, 1)
 
+    def test_render_video_removes_partial_output_when_cancelled(self):
+        with TemporaryDirectory() as temp_input, TemporaryDirectory() as temp_output:
+            input_path = Path(temp_input)
+            output_path = Path(temp_output)
+            settings = app_service.build_render_settings(no_overlay=True)
+            video_data = {TIMESTAMP: {camera: f"{TIMESTAMP}-{camera}.mp4" for camera in FOUR_CAMERAS}}
+            output_file = output_path / f"TeslaCam_{TIMESTAMP}.mp4"
+            output_file.write_bytes(b"partial output")
+            writer = _FakeWriter()
+            cancel_after_progress = {"called": False}
+
+            def cancel_requested():
+                return cancel_after_progress["called"]
+
+            def process_video(*, progress_callback=None, **_kwargs):
+                cancel_after_progress["called"] = True
+                if progress_callback is not None:
+                    progress_callback(1)
+
+            with patch(
+                "modules.data_handler.compile_video_data", return_value=video_data
+            ), patch("modules.data_handler.validate_camera_data"), patch(
+                "modules.data_handler.validate_telemetry_data"
+            ), patch(
+                "modules.video_processor.get_video_fps", return_value=(TIMESTAMP, 5.0)
+            ), patch(
+                "modules.video_processor.create_video_writer",
+                return_value=(writer, output_file),
+            ), patch(
+                "modules.video_processor.open_captures", return_value={}
+            ), patch(
+                "modules.video_processor.get_total_frames", return_value=1
+            ), patch(
+                "modules.video_processor.process_video", side_effect=process_video
+            ), patch(
+                "modules.video_processor.release_captures"
+            ), patch(
+                "modules.video_processor.close_preview_windows"
+            ), patch(
+                "modules.data_handler.remove_generated_csv"
+            ):
+                with self.assertRaisesRegex(app_service.RenderCancelled, "Render cancelled"):
+                    app_service.render_video(
+                        app_service.RenderJob(
+                            input_path,
+                            output_path,
+                            settings,
+                            cancel_requested=cancel_requested,
+                        )
+                    )
+
+            self.assertTrue(writer.released)
+            self.assertFalse(output_file.exists())
+
 
 class _FakeCapture:
     def __init__(self, frame):

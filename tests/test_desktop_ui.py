@@ -243,6 +243,39 @@ class TestDesktopUiLayoutState(unittest.TestCase):
 
         self.assertEqual(render_calls, ["render"])
 
+    def test_cancel_render_requests_worker_stop_and_reports_cancelled(self):
+        with patch_supported_codec():
+            window = self.MainWindow()
+
+        class FakeWorker:
+            def __init__(self):
+                self.cancelled = False
+
+            def cancel(self):
+                self.cancelled = True
+
+        worker = FakeWorker()
+        window._thread = object()
+        window._worker = worker  # type: ignore[assignment]
+        window._active_action = "render"
+        window._sync_buttons()
+
+        self.assertFalse(window.render_button.isEnabled())
+        self.assertTrue(window.cancel_button.isEnabled())
+
+        window.cancel_render()
+
+        self.assertTrue(worker.cancelled)
+        self.assertFalse(window.cancel_button.isEnabled())
+        self.assertEqual(window.status_label.text(), "Cancelling render…")
+        self.assertIn("Cancelling render…", window.log_panel.toPlainText())
+
+        window._on_render_cancelled("Render cancelled.")
+
+        self.assertEqual(window.progress.value(), 0)
+        self.assertEqual(window.status_label.text(), "Render cancelled.")
+        self.assertIn("Partial output was removed.", window.log_panel.toPlainText())
+
     def test_launch_warns_when_mp4_codec_is_missing(self):
         warnings = []
 
