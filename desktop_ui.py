@@ -309,6 +309,7 @@ def create_main_window(qt: dict[str, object]):
             self._codec_warning_shown = False
             self._mp4_output_supported = True
             self._pending_render_without_telemetry = False
+            self._telemetry_prompt_active = False
             self.setWindowTitle(APP_NAME)
             self.resize(960, 720)
             self._build_ui()
@@ -738,24 +739,45 @@ def create_main_window(qt: dict[str, object]):
             self._append_log(f"Finished: {output_text}")
 
         def _on_telemetry_prompt_required(self, message: str):
+            if self._telemetry_prompt_active:
+                return
+            self._telemetry_prompt_active = True
             self.progress.setRange(0, 100)
             self.progress.setValue(0)
             self._append_log(message)
-            if self._ask_continue_without_telemetry(message):
+            try:
+                continue_without_telemetry = self._ask_continue_without_telemetry(message)
+            finally:
+                self._telemetry_prompt_active = False
+            if continue_without_telemetry:
                 self.overlay_check.setChecked(False)
-                self._pending_render_without_telemetry = True
                 self.status_label.setText("Rendering without telemetry overlay…")
                 self._append_log("Continuing without telemetry overlay.")
+                self._retry_render_after_prompt()
             else:
                 self._pending_render_without_telemetry = False
                 self.status_label.setText("Render cancelled.")
                 self._append_log("Render cancelled.")
+
+        def _retry_render_after_prompt(self):
+            if self._thread is None:
+                self.render()
+            else:
+                self._pending_render_without_telemetry = True
 
         def _ask_continue_without_telemetry(self, message: str) -> bool:
             dialog = QMessageBox(self)
             dialog.setIcon(QMessageBox.Icon.Warning)
             dialog.setWindowTitle("Incomplete telemetry data")
             dialog.setText(message)
+            dialog.setInformativeText(
+                "Common causes include the car being in Park for part of the clip, "
+                "missing or partial telemetry CSV data, or telemetry that cannot be matched to every video frame."
+            )
+            dialog.setDetailedText(
+                "TeslaCam Telemetry can still render the selected clip without the telemetry overlay.\n\n"
+                "Choose Yes to render the video without telemetry. Choose No to cancel and leave your settings unchanged."
+            )
             dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             dialog.setDefaultButton(QMessageBox.StandardButton.No)
             dialog.setStyleSheet(self._message_box_stylesheet())

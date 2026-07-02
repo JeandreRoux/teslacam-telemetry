@@ -165,6 +165,8 @@ class TestDesktopUiLayoutState(unittest.TestCase):
         self.assertIn("2026-06-19_23-08-01", window.diagram_label.toolTip())
 
     def test_telemetry_prompt_can_retry_render_without_overlay(self):
+        prompts = []
+
         class FakeMessageBox:
             class Icon:
                 Warning = "warning"
@@ -177,6 +179,8 @@ class TestDesktopUiLayoutState(unittest.TestCase):
                 self.parent = parent
                 self.title = ""
                 self.message = ""
+                self.informative_text = ""
+                self.detailed_text = ""
                 self.stylesheet = ""
 
             def setIcon(self, icon):
@@ -188,6 +192,12 @@ class TestDesktopUiLayoutState(unittest.TestCase):
             def setText(self, message):
                 self.message = message
 
+            def setInformativeText(self, informative_text):
+                self.informative_text = informative_text
+
+            def setDetailedText(self, detailed_text):
+                self.detailed_text = detailed_text
+
             def setStandardButtons(self, buttons):
                 self.buttons = buttons
 
@@ -198,6 +208,7 @@ class TestDesktopUiLayoutState(unittest.TestCase):
                 self.stylesheet = stylesheet
 
             def exec(self):
+                prompts.append(self)
                 return self.StandardButton.Yes
 
         qt = dict(self.qt)
@@ -214,11 +225,18 @@ class TestDesktopUiLayoutState(unittest.TestCase):
             "Telemetry data is incomplete or unavailable for one or more selected clips.\n\n"
             "Continue rendering without the telemetry overlay?"
         )
-        window._worker_stopped()
 
         self.assertFalse(window.overlay_check.isChecked())
         self.assertEqual(render_calls, ["render"])
+        self.assertEqual(len(prompts), 1)
+        self.assertEqual(prompts[0].title, "Incomplete telemetry data")
+        self.assertIn("Park", prompts[0].informative_text)
+        self.assertIn("without the telemetry overlay", prompts[0].detailed_text)
         self.assertIn("Continuing without telemetry overlay.", window.log_panel.toPlainText())
+
+        window._worker_stopped()
+
+        self.assertEqual(render_calls, ["render"])
 
     def test_launch_warns_when_mp4_codec_is_missing(self):
         warnings = []
@@ -234,6 +252,8 @@ class TestDesktopUiLayoutState(unittest.TestCase):
                 self.parent = parent
                 self.title = ""
                 self.message = ""
+                self.informative_text = ""
+                self.detailed_text = ""
                 self.stylesheet = ""
 
             def setIcon(self, icon):
@@ -244,6 +264,12 @@ class TestDesktopUiLayoutState(unittest.TestCase):
 
             def setText(self, message):
                 self.message = message
+
+            def setInformativeText(self, informative_text):
+                self.informative_text = informative_text
+
+            def setDetailedText(self, detailed_text):
+                self.detailed_text = detailed_text
 
             def setStandardButtons(self, buttons):
                 self.buttons = buttons
