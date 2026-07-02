@@ -222,8 +222,11 @@ class TestDesktopUiLayoutState(unittest.TestCase):
         window.render = lambda: render_calls.append("render")
 
         window._on_telemetry_prompt_required(
-            "Telemetry data is incomplete or unavailable for one or more selected clips.\n\n"
-            "Continue rendering without the telemetry overlay?"
+            app_service.TelemetryPromptRequired(
+                "Telemetry data is incomplete or unavailable for one or more selected clips.\n\n"
+                "Continue rendering without the telemetry overlay?",
+                details="The following selected clips have partial telemetry data:\n\n- 2026-06-19_23-09-01: 2026-06-19_23-09-01-data.csv",
+            )
         )
 
         self.assertFalse(window.overlay_check.isChecked())
@@ -231,8 +234,9 @@ class TestDesktopUiLayoutState(unittest.TestCase):
         self.assertEqual(len(prompts), 1)
         self.assertEqual(prompts[0].title, "Incomplete telemetry data")
         self.assertEqual(prompts[0].informative_text, "")
-        self.assertIn("Park", prompts[0].detailed_text)
-        self.assertIn("without the telemetry overlay", prompts[0].detailed_text)
+        self.assertIn("2026-06-19_23-09-01", prompts[0].detailed_text)
+        self.assertIn("2026-06-19_23-09-01-data.csv", prompts[0].detailed_text)
+        self.assertIn("without the telemetry overlay", prompts[0].message)
         self.assertIn("Continuing without telemetry overlay.", window.log_panel.toPlainText())
 
         window._worker_stopped()

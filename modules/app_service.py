@@ -64,6 +64,10 @@ class RenderJob:
 class TelemetryPromptRequired(RuntimeError):
     """Raised when the desktop app should ask whether to continue without telemetry."""
 
+    def __init__(self, message: str, details: str = ""):
+        super().__init__(message)
+        self.details = details
+
 
 @dataclass(frozen=True)
 class RenderProgress:
@@ -490,7 +494,30 @@ def _validate_telemetry_frame_counts_before_render(
     for timestamp, data_file in partial_telemetry_groups:
         print(f"- {timestamp}: {data_file}")
 
+    if settings.telemetry_prompt is not None:
+        raise TelemetryPromptRequired(
+            "Telemetry data is incomplete or unavailable for one or more selected clips.\n\n"
+            "Continue rendering without the telemetry overlay?",
+            details=_partial_telemetry_prompt_details(partial_telemetry_groups),
+        )
+
     settings.no_overlay = data_handler.continue_without_telemetry_overlay(settings)
+
+
+def _partial_telemetry_prompt_details(partial_telemetry_groups: list[tuple[str, str]]) -> str:
+    lines = [
+        "The following selected clips have partial telemetry data:",
+        "",
+        *(f"- {timestamp}: {data_file}" for timestamp, data_file in partial_telemetry_groups),
+        "",
+        "Common causes include the car being in Park for part of the clip, "
+        "missing or partial telemetry CSV data, or telemetry that cannot be matched to every video frame.",
+        "",
+        "TeslaCam Telemetry can still render the selected clips without the telemetry overlay.",
+        "",
+        "Choose Yes to render without telemetry. Choose No to cancel and leave your settings unchanged.",
+    ]
+    return "\n".join(lines)
 
 
 def format_scan_summary(scan_result: ScanResult) -> str:

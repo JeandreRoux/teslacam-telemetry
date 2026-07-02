@@ -298,7 +298,7 @@ class TestRenderVideo(unittest.TestCase):
                 with self.assertRaisesRegex(
                     app_service.TelemetryPromptRequired,
                     "Continue rendering without the telemetry overlay",
-                ):
+                ) as raised:
                     app_service.render_video(
                         app_service.RenderJob(
                             input_path,
@@ -309,6 +309,8 @@ class TestRenderVideo(unittest.TestCase):
                         )
                     )
 
+            self.assertIn(later_timestamp, raised.exception.details)
+            self.assertIn(f"{later_timestamp}-data.csv", raised.exception.details)
             self.assertEqual(open_captures.call_count, 2)
             self.assertEqual(release_captures.call_count, 2)
             create_video_writer.assert_not_called()
