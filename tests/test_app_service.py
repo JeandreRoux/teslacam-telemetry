@@ -256,6 +256,63 @@ class TestRenderVideo(unittest.TestCase):
             self.assertEqual(progress_updates[0].clip_count, 1)
             self.assertEqual(progress_updates[0].total_frames, 3)
 
+    def test_render_video_prompts_for_partial_selected_telemetry_before_writer_starts(self):
+        with TemporaryDirectory() as temp_input, TemporaryDirectory() as temp_output:
+            input_path = Path(temp_input)
+            output_path = Path(temp_output)
+            settings = app_service.build_render_settings(no_overlay=False)
+            later_timestamp = "2026-06-19_23-09-01"
+            video_data = {
+                TIMESTAMP: {
+                    **{camera: f"{TIMESTAMP}-{camera}.mp4" for camera in FOUR_CAMERAS},
+                    "data": f"{TIMESTAMP}-data.csv",
+                },
+                later_timestamp: {
+                    **{camera: f"{later_timestamp}-{camera}.mp4" for camera in FOUR_CAMERAS},
+                    "data": f"{later_timestamp}-data.csv",
+                },
+            }
+
+            with patch(
+                "modules.data_handler.compile_video_data", return_value=video_data
+            ), patch(
+                "modules.data_handler.validate_camera_data"
+            ), patch(
+                "modules.data_handler.generate_sei_data", return_value=video_data
+            ), patch(
+                "modules.data_handler.validate_telemetry_data"
+            ), patch(
+                "modules.video_processor.open_captures", return_value={}
+            ) as open_captures, patch(
+                "modules.video_processor.get_total_frames", return_value=3
+            ), patch(
+                "modules.video_processor.release_captures"
+            ) as release_captures, patch(
+                "modules.data_handler.telemetry_csv_matches_frame_count",
+                side_effect=[True, False],
+            ), patch(
+                "modules.video_processor.create_video_writer"
+            ) as create_video_writer, patch(
+                "modules.data_handler.remove_generated_csv"
+            ):
+                with self.assertRaisesRegex(
+                    app_service.TelemetryPromptRequired,
+                    "Continue rendering without the telemetry overlay",
+                ):
+                    app_service.render_video(
+                        app_service.RenderJob(
+                            input_path,
+                            output_path,
+                            settings,
+                            selected_timestamps=(TIMESTAMP, later_timestamp),
+                            prompt_for_telemetry=True,
+                        )
+                    )
+
+            self.assertEqual(open_captures.call_count, 2)
+            self.assertEqual(release_captures.call_count, 2)
+            create_video_writer.assert_not_called()
+
     def test_render_video_raises_desktop_telemetry_prompt_before_using_input(self):
         with TemporaryDirectory() as temp_input, TemporaryDirectory() as temp_output:
             input_path = Path(temp_input)
@@ -382,6 +439,8 @@ class TestRenderVideo(unittest.TestCase):
                 "modules.video_processor.open_captures", return_value={}
             ), patch(
                 "modules.video_processor.get_total_frames", return_value=1
+            ), patch(
+                "modules.data_handler.telemetry_csv_matches_frame_count", return_value=True
             ), patch(
                 "modules.data_handler.load_telemetry_data"
             ), patch(
