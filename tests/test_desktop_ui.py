@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+
 from modules import app_service, layouts
 
 
@@ -42,7 +44,7 @@ class TestDesktopUiLayoutState(unittest.TestCase):
         self.assertEqual(window.layout_combo.count(), 0)
         self.assertEqual(window.layout_combo.currentText(), "")
         self.assertEqual(window.layout_combo.placeholderText(), "Automatic layout")
-        self.assertIn("Camera layout", window.diagram_label.text())
+        self.assertIn("Preview", window.diagram_label.text())
         self.assertEqual(window.status_label.text(), "Add an input folder to begin.")
         self.assertEqual(window.layout_combo.toolTip(), "")
         self.assertEqual(window.diagram_label.toolTip(), "")
@@ -68,6 +70,32 @@ class TestDesktopUiLayoutState(unittest.TestCase):
         self.assertEqual(window.status_label.text(), "Ready to render.")
         self.assertEqual(window.progress.value(), 0)
         self.assertTrue(window.render_button.isEnabled())
+
+    def test_scan_result_shows_preview_frame_when_available(self):
+        with patch_supported_codec():
+            window = self.MainWindow()
+        window.input_edit.setText("/input")
+        window.output_edit.setText("/output")
+        preview = app_service.PreviewFrame(
+            timestamp="2026-06-19_23-08-01",
+            image_rgb=np.zeros((720, 1280, 3), dtype=np.uint8),
+        )
+        scan = app_service.ScanResult(
+            input_path=Path("/input"),
+            layout=layouts.FOUR_CAMERA_DEFAULT,
+            camera_set="four-camera",
+            clip_group_count=1,
+            preview_frame=preview,
+        )
+
+        window._on_scan_finished(scan)
+
+        pixmap = window.diagram_label.pixmap()
+        self.assertIsNotNone(pixmap)
+        assert pixmap is not None
+        self.assertFalse(pixmap.isNull())
+        self.assertEqual(window.diagram_label.text(), "")
+        self.assertIn("2026-06-19_23-08-01", window.diagram_label.toolTip())
 
     def test_launch_warns_when_mp4_codec_is_missing(self):
         warnings = []

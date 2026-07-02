@@ -3,6 +3,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+import numpy as np
+
 from modules import app_service
 from modules import layouts
 from modules.settings import RenderSettings
@@ -124,6 +126,44 @@ class TestScanInputFolder(unittest.TestCase):
             )
 
 
+class TestBuildPreviewFrame(unittest.TestCase):
+    def test_returns_none_when_scan_is_not_ready(self):
+        scan = app_service.ScanResult(input_path=Path("/input"))
+
+        self.assertIsNone(app_service.build_preview_frame(scan))
+
+    def test_builds_preview_from_first_clip_group(self):
+        scan = app_service.ScanResult(
+            input_path=Path("/input"),
+            video_data={
+                TIMESTAMP: {camera: f"{TIMESTAMP}-{camera}.mp4" for camera in FOUR_CAMERAS},
+            },
+            layout=layouts.FOUR_CAMERA_DEFAULT,
+            camera_set="four-camera",
+            clip_group_count=1,
+        )
+        captures = {
+            camera: _FakeCapture(np.full((4, 4, 3), index + 1, dtype=np.uint8))
+            for index, camera in enumerate(FOUR_CAMERAS)
+        }
+
+        with patch("modules.video_processor.open_captures", return_value=captures) as open_captures, patch(
+            "modules.video_processor.release_captures"
+        ) as release_captures:
+            preview = app_service.build_preview_frame(scan)
+
+        self.assertIsNotNone(preview)
+        assert preview is not None
+        self.assertEqual(preview.timestamp, TIMESTAMP)
+        self.assertEqual(preview.image_rgb.shape, (720, 1280, 3))
+        open_captures.assert_called_once_with(
+            Path("/input"),
+            scan.video_data[TIMESTAMP],
+            layouts.FOUR_CAMERA_DEFAULT,
+        )
+        release_captures.assert_called_once_with(captures)
+
+
 class TestFormatScanSummary(unittest.TestCase):
     def test_formats_ready_scan_summary(self):
         scan = app_service.ScanResult(
@@ -211,6 +251,14 @@ class TestRenderVideo(unittest.TestCase):
             self.assertEqual(progress_updates[0].clip_index, 1)
             self.assertEqual(progress_updates[0].clip_count, 1)
             self.assertEqual(progress_updates[0].total_frames, 3)
+
+
+class _FakeCapture:
+    def __init__(self, frame):
+        self.frame = frame
+
+    def read(self):
+        return True, self.frame
 
 
 class _FakeWriter:

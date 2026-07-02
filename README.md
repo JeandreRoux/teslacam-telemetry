@@ -125,13 +125,14 @@ teslacam-telemetry-ui
 Basic workflow:
 
 1. Add the folder with your TeslaCam videos.
-2. Choose where to save the finished video.
-3. Select render options:
+2. Check the detected layout preview.
+3. Choose where to save the finished video.
+4. Select render options:
    * **Telemetry overlay**: Adds speed, gear, steering, pedal, and driving-state data when telemetry is available.
    * **Use MPH**: Shows speed in MPH instead of KM/H.
    * **Keep generated CSV**: Keeps telemetry CSV files generated from embedded SEI metadata.
-4. Click **Render**.
-5. When rendering completes, click **Open output folder** to view the finished video.
+5. Click **Render**.
+6. When rendering completes, click **Open output folder** to view the finished video.
 
 After you add an input folder, the app detects the available cameras and selects the matching layout:
 
@@ -160,7 +161,7 @@ teslacam-telemetry-ui --input /path/to/teslacam/clips --output /path/to/save/vid
 ## Future Roadmap
 Planned priorities:
 
-* **Windows app download**: Provide a packaged `.exe` or portable ZIP so you do not need to install Python manually.
+* **Packaged app polish**: Keep improving Windows/macOS downloads, signing, and first-run guidance.
 * **Layout choices**: Add friendly layout options such as **Four-camera standard**, **Six-camera grid**, **Front focus**, and **Balanced grid**.
 * **Clip selection**: Show detected clip groups so you can render everything, selected clips, or a time range.
 * **Render presets**: Add simple quality choices such as fast preview, standard quality, high quality, and smaller shareable files.
