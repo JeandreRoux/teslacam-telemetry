@@ -14,6 +14,13 @@ blinker_state = {
 }
 
 
+def reset_blinker_state() -> None:
+    """Reset blinker timing state at render/clip boundaries."""
+    for blinker in blinker_state.values():
+        blinker["state"] = False
+        blinker["frame"] = 0
+
+
 def draw_overlay(canvas, f, telemetry_df, frame_index, settings: RenderSettings):
     """Draw speed, gear, autopilot, blinker, steering, and pedal state onto the canvas."""
     # Read current frame data

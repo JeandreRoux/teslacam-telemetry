@@ -142,6 +142,7 @@ def process_video(
     """
 
     frame_index = 0
+    overlay_renderer.reset_blinker_state()
 
     reference_camera = layouts.get_reference_camera(settings.layout)
 
