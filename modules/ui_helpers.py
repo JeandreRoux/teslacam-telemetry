@@ -66,7 +66,7 @@ def camera_display_name(camera_key: str) -> str:
 def layout_diagram(layout: layouts.LayoutConfig | None) -> str:
     """Return a compact text diagram for the selected layout."""
     if layout is None:
-        return "Camera layout will appear here."
+        return "Preview will appear here."
 
     if layout["required_cameras"] == layouts.SIX_CAMERA_KEYS:
         return "[ Left pillar ] [    Front    ] [ Right pillar ]\n[ Left repeater ] [    Rear     ] [ Right repeater ]"

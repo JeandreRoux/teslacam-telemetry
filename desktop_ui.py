@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _load_qt():
     from PySide6.QtCore import QDir, QObject, QThread, Qt, QUrl, Signal, Slot
-    from PySide6.QtGui import QDesktopServices, QFont
+    from PySide6.QtGui import QDesktopServices, QFont, QImage, QPixmap
     from PySide6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -54,6 +55,8 @@ def _load_qt():
         "Slot": Slot,
         "QDesktopServices": QDesktopServices,
         "QFont": QFont,
+        "QImage": QImage,
+        "QPixmap": QPixmap,
         "QApplication": QApplication,
         "QCheckBox": QCheckBox,
         "QComboBox": QComboBox,
@@ -85,6 +88,8 @@ def create_main_window(qt: dict[str, object]):
     Slot = qt["Slot"]
     QDesktopServices = qt["QDesktopServices"]
     QFont = qt["QFont"]
+    QImage = qt["QImage"]
+    QPixmap = qt["QPixmap"]
     QCheckBox = qt["QCheckBox"]
     QComboBox = qt["QComboBox"]
     QFileDialog = qt["QFileDialog"]
@@ -124,7 +129,11 @@ def create_main_window(qt: dict[str, object]):
                 settings = ui_helpers.build_settings_from_options(self.options)
                 if self.action == "scan":
                     self.log.emit(f"Checking {self.input_path} ...")
-                    self.scan_finished.emit(app_service.scan_input_folder(self.input_path, settings))
+                    scan_result = app_service.scan_input_folder(self.input_path, settings)
+                    preview_frame = app_service.build_preview_frame(scan_result)
+                    if preview_frame is not None:
+                        scan_result = replace(scan_result, preview_frame=preview_frame)
+                    self.scan_finished.emit(scan_result)
                 else:
                     if self.output_path is None:
                         raise ValueError("Output folder is required.")
@@ -192,7 +201,7 @@ def create_main_window(qt: dict[str, object]):
             paths_layout.addWidget(output_browse, 1, 2)
             main_layout.addWidget(paths_group)
 
-            layout_group = QGroupBox("Layout")
+            layout_group = QGroupBox("Layout preview")
             layout_box = QVBoxLayout(layout_group)
             self.layout_combo = QComboBox()
             self.layout_combo.setPlaceholderText("Automatic layout")
@@ -202,7 +211,7 @@ def create_main_window(qt: dict[str, object]):
             self.diagram_label.setObjectName("Diagram")
             self.diagram_label.setFrameShape(QFrame.Shape.StyledPanel)
             self.diagram_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.diagram_label.setMinimumHeight(94)
+            self.diagram_label.setMinimumHeight(220)
             self.diagram_label.setFont(QFont("monospace"))
             layout_box.addWidget(self.layout_combo)
             layout_box.addWidget(self.diagram_label)
@@ -293,12 +302,40 @@ def create_main_window(qt: dict[str, object]):
                 self.output_edit.setText(self._native_path_text(folder))
 
         def _update_layout_diagram(self, label: str):
+            self.diagram_label.setPixmap(QPixmap())
+            self.diagram_label.setToolTip("")
             self.diagram_label.setText(ui_helpers.layout_diagram(ui_helpers.layout_for_display_name(label)))
 
         def _show_layout_placeholder(self):
             self.layout_combo.clear()
             self.layout_combo.setPlaceholderText("Automatic layout")
+            self.diagram_label.setPixmap(QPixmap())
+            self.diagram_label.setToolTip("")
             self.diagram_label.setText(ui_helpers.layout_diagram(None))
+
+        def _show_preview_frame(self, preview_frame: app_service.PreviewFrame):
+            image = preview_frame.image_rgb
+            height, width, channels = image.shape
+            if channels != 3:
+                return
+            qimage = QImage(
+                image.data,
+                width,
+                height,
+                channels * width,
+                QImage.Format.Format_RGB888,
+            ).copy()
+            pixmap = QPixmap.fromImage(qimage)
+            target_size = self.diagram_label.size()
+            if target_size.width() > 0 and target_size.height() > 0:
+                pixmap = pixmap.scaled(
+                    target_size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            self.diagram_label.setText("")
+            self.diagram_label.setPixmap(pixmap)
+            self.diagram_label.setToolTip(f"Preview from {preview_frame.timestamp}")
 
         def _append_log(self, message: str):
             self.log_panel.append(message)
@@ -438,6 +475,8 @@ def create_main_window(qt: dict[str, object]):
                     self._update_layout_diagram(label)
             else:
                 self._show_layout_placeholder()
+            if scan_result.preview_frame is not None:
+                self._show_preview_frame(scan_result.preview_frame)
             summary = ui_helpers.format_scan_summary_for_ui(scan_result)
             self._append_log(summary)
             if self._mp4_output_supported:

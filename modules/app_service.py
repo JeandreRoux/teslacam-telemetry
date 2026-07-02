@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, Callable
 import platform
 from pathlib import Path
 import tempfile
-from typing import Callable
+
+import cv2 as cv
+import numpy as np
 
 from modules import data_handler
 from modules import layouts
 from modules import video_processor
 from modules.settings import RenderSettings
+
+
+@dataclass(frozen=True)
+class PreviewFrame:
+    """Still preview image composed from the first detected clip group."""
+
+    timestamp: str
+    image_rgb: Any
 
 
 @dataclass(frozen=True)
@@ -24,6 +35,7 @@ class ScanResult:
     telemetry_file_count: int = 0
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    preview_frame: PreviewFrame | None = None
 
     @property
     def is_ready(self) -> bool:
@@ -228,6 +240,42 @@ def scan_input_folder(input_path: Path, settings: RenderSettings | None = None) 
         warnings=warnings,
         errors=errors,
     )
+
+
+def build_preview_frame(scan_result: ScanResult) -> PreviewFrame | None:
+    """Return a still layout preview for the first detected clip group, if possible."""
+    if not scan_result.is_ready or scan_result.layout is None or not scan_result.video_data:
+        return None
+
+    timestamp = sorted(scan_result.video_data.keys())[0]
+    files_info = scan_result.video_data[timestamp]
+    captures = {}
+
+    try:
+        captures = video_processor.open_captures(
+            scan_result.input_path,
+            files_info,
+            scan_result.layout,
+        )
+        frames = {}
+        for camera_key in scan_result.layout["required_cameras"]:
+            ok, frame = captures[camera_key].read()
+            if not ok:
+                return None
+            frames[camera_key] = frame
+
+        canvas = np.zeros(
+            (video_processor.CANVAS_HEIGHT, video_processor.CANVAS_WIDTH, 3),
+            dtype=np.uint8,
+        )
+        preview_bgr = layouts.render_layout(canvas, frames, scan_result.layout)
+        preview_rgb = cv.cvtColor(preview_bgr, cv.COLOR_BGR2RGB)
+        return PreviewFrame(timestamp=timestamp, image_rgb=preview_rgb)
+    except (Exception, SystemExit):
+        return None
+    finally:
+        if captures:
+            video_processor.release_captures(captures)
 
 
 def render_video(
